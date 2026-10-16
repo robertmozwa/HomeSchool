@@ -49,6 +49,8 @@ Families receive the update the next time they open the app while online. Their 
 
 ## Things to tell families
 
+- **Photos, files and links.** Each entry can hold photos, attached files (PDF, Word, Excel, PowerPoint, audio, video, Scratch or Python projects, up to 50 MB each) and web links. For long videos, a link to YouTube, Google Drive or OneDrive keeps the app and its backups small.
+
 - **Back up regularly.** Records live in the browser on one device. *Backup → Download backup* saves a single file with every entry and photo. Keep it in OneDrive, Google Drive or on a USB stick. The app reminds them if a backup is overdue.
 - **Changing devices:** download a backup on the old device, then use *Restore from a backup* on the new one.
 - **Don't clear browsing data** for the app's site, as this deletes records. Installing the app and using *Keep my records safe from clean-up* (in Backup) reduces the risk of the browser removing data automatically.

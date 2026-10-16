@@ -283,6 +283,27 @@ dialog.small{width:min(440px,calc(100vw - 24px))}
   @keyframes pop{from{transform:translate(-50%,8px);opacity:0}}
 }
 
+/* Attached files and links */
+.files{display:flex;flex-wrap:wrap;gap:6px}
+.file{display:inline-flex;align-items:center;gap:8px;max-width:100%;padding:5px 10px 5px 5px;border-radius:8px;border:1.5px solid var(--rule);background:var(--sheet);color:var(--ink);text-decoration:none;font-size:.85rem;cursor:pointer}
+.file:hover{border-color:var(--accent)}
+.file span{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.file small{color:var(--muted);white-space:nowrap}
+.file.missing{opacity:.5;pointer-events:none}
+.ftype{flex:none;font-size:.66rem;letter-spacing:.06em;font-weight:700;padding:3px 6px;border-radius:5px;background:var(--accent-soft);color:var(--accent);font-family:var(--f-body)}
+.file-list{display:flex;flex-direction:column;gap:6px}
+.file-list:empty{display:none}
+.frow{display:flex;align-items:center;gap:10px;padding:4px 4px 4px 8px;border:1.5px solid var(--rule);border-radius:10px;min-width:0}
+.fname{flex:1;min-width:0;font-weight:700;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.furl{display:block;font-weight:400;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.frow small{color:var(--muted);white-space:nowrap}
+.frow .icon-btn{width:34px;height:34px;font-size:1.3rem;flex:none}
+.link-add{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:8px}
+@media (max-width:560px){.link-add{grid-template-columns:1fr}}
+.rep-files{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:3px;font-size:.88rem}
+.rep-files b{font-size:.68rem;letter-spacing:.06em;color:var(--muted);margin-right:4px}
+.rep-files span{color:var(--muted);word-break:break-all}
+
 /* Print: only the report, always on white */
 @media print{
   :root,:root[data-theme="dark"],:root:not([data-theme="light"]){
@@ -445,6 +466,44 @@ function hydrate(root){
   $$('img[data-photo]',root).forEach(function(img){
     photoURL(img.getAttribute('data-photo')).then(function(u){ if(u) img.src = u; else img.remove(); });
   });
+  $$('a[data-file]',root).forEach(function(a){
+    a.addEventListener('click',function(ev){ ev.stopPropagation(); });
+    photoURL(a.getAttribute('data-file')).then(function(u){
+      if(!u){ a.classList.add('missing'); return; }
+      a.href = u;
+      if(a.getAttribute('data-view')==='1'){ a.target = '_blank'; a.rel = 'noopener'; } else a.download = a.getAttribute('data-name');
+    });
+  });
+  $$('a.link',root).forEach(function(a){ a.addEventListener('click',function(ev){ ev.stopPropagation(); }); });
+}
+
+/* ---------- Attached files and links ---------- */
+var MAX_FILE = 50*1048576;
+function ext(name){ var m = /\.([a-z0-9]+)$/i.exec(name||''); return m ? m[1].toLowerCase() : ''; }
+function fileType(f){
+  var e = ext(f.name), t = f.type||'';
+  if(e==='pdf' || t==='application/pdf') return 'PDF';
+  if(/^(doc|docx|odt|rtf|pages)$/.test(e)) return 'DOC';
+  if(/^(xls|xlsx|csv|ods|numbers)$/.test(e)) return 'XLS';
+  if(/^(ppt|pptx|odp|key)$/.test(e)) return 'PPT';
+  if(t.indexOf('audio/')===0 || /^(mp3|m4a|wav|aac|ogg)$/.test(e)) return 'AUDIO';
+  if(t.indexOf('video/')===0 || /^(mp4|mov|webm|m4v|avi)$/.test(e)) return 'VIDEO';
+  if(/^(sb3|sb2|py|ipynb|html|js|ino|blend|stl)$/.test(e)) return 'CODE';
+  if(/^(txt|md)$/.test(e)) return 'TXT';
+  if(/^(zip|7z|rar)$/.test(e)) return 'ZIP';
+  if(t.indexOf('image/')===0) return 'IMG';
+  return 'FILE';
+}
+function viewable(f){ var t = fileType(f); return t==='PDF' || t==='AUDIO' || t==='VIDEO' || t==='TXT' || t==='IMG'; }
+function sizeLabel(b){ b = +b||0; return b < 1048576 ? Math.max(1,Math.round(b/1024))+' KB' : (b/1048576).toFixed(b < 10485760 ? 1 : 0)+' MB'; }
+function fileChip(f){
+  return '<a class="file" data-file="'+f.id+'" data-name="'+esc(f.name)+'" data-view="'+(viewable(f)?1:0)+'" title="Open '+esc(f.name)+'">'+
+    '<b class="ftype">'+fileType(f)+'</b><span>'+esc(f.name)+'</span><small>'+sizeLabel(f.size)+'</small></a>';
+}
+function safeURL(u){ try { var x = new URL(u); return (x.protocol==='https:' || x.protocol==='http:') ? x.href : ''; } catch(e){ return ''; } }
+function linkChip(l){
+  var u = safeURL(l.url); if(!u) return '';
+  return '<a class="file link" href="'+esc(u)+'" target="_blank" rel="noopener"><b class="ftype">LINK</b><span>'+esc(l.label || new URL(u).hostname)+'</span></a>';
 }
 function clearURLs(){ urlCache.forEach(function(u){ URL.revokeObjectURL(u); }); urlCache.clear(); }
 function processImage(file){
@@ -481,7 +540,7 @@ function areaOptions(sel,allLabel){
 var toastTimer;
 function toast(msg){
   var t = $('#toast'); t.textContent = msg; t.hidden = false;
-  clearTimeout(toastTimer); toastTimer = setTimeout(function(){ t.hidden = true; }, 2600);
+  clearTimeout(toastTimer); toastTimer = setTimeout(function(){ t.hidden = true; }, Math.max(2600, msg.length*60));
 }
 function confirmBox(o){
   var d = $('#confirm');
@@ -567,7 +626,8 @@ function filteredEntries(){
   return S.entries.filter(function(e){
     if(f.child && e.childIds.indexOf(f.child) < 0) return false;
     if(f.area && e.areas.indexOf(f.area) < 0) return false;
-    if(q && (e.title+' '+(e.notes||'')+' '+(e.type||'')).toLowerCase().indexOf(q) < 0) return false;
+    var hay = e.title+' '+(e.notes||'')+' '+(e.type||'')+' '+(e.files||[]).map(function(f){ return f.name; }).join(' ')+' '+(e.links||[]).map(function(l){ return l.label+' '+l.url; }).join(' ');
+    if(q && hay.toLowerCase().indexOf(q) < 0) return false;
     return true;
   });
 }
@@ -598,6 +658,7 @@ function drawList(){
       '<div class="chips">'+e.areas.map(areaChip).join('')+'</div>'+
       (e.notes ? '<p class="notes">'+esc(e.notes)+'</p>' : '')+
       (ph.length ? '<div class="thumbs">'+ph.slice(0,4).map(function(p){ return '<img alt="" data-photo="'+p+'">'; }).join('')+(ph.length>4?'<span class="more">+'+(ph.length-4)+'</span>':'')+'</div>' : '')+
+      ((e.files||[]).length || (e.links||[]).length ? '<div class="files">'+(e.files||[]).map(fileChip).join('')+(e.links||[]).map(linkChip).join('')+'</div>' : '')+
       '</div></article>';
   });
   html += '</div>';
@@ -623,6 +684,7 @@ function openEntry(id){
     childIds: S.children.length===1 ? [S.children[0].id] : lastKids
   };
   var keep = (e.photoIds||[]).slice(), added = [], saved = false;
+  var keepFiles = (e.files||[]).slice(), addedFiles = [], links = (e.links||[]).slice();
   var d = $('#sheet');
   d.innerHTML = '<form id="entry-form" class="sheet-form" novalidate>'+
     '<header class="sheet-head"><h2>'+(isNew?'Record evidence':'Edit evidence')+'</h2><button type="button" class="icon-btn" data-close aria-label="Close">×</button></header>'+
@@ -641,6 +703,14 @@ function openEntry(id){
       '<div class="field"><span>Photos</span><div class="photo-grid" id="e-photos"></div>'+
         '<div class="btns"><label class="btn ghost file-btn">Add photos<input type="file" id="e-file" accept="image/*" multiple></label></div>'+
         '<p class="hint">Photos of work, projects and outings. Large photos are resized to save space on the device.</p></div>'+
+      '<div class="field"><span>Files</span><div class="file-list" id="e-files"></div>'+
+        '<div class="btns"><label class="btn ghost file-btn">Attach files<input type="file" id="e-attach" multiple></label></div>'+
+        '<p class="hint">PDFs, Word, Excel and PowerPoint files, audio or video recordings, Scratch and Python projects. Up to 50 MB each.</p></div>'+
+      '<div class="field"><span>Web links</span><div class="file-list" id="e-links"></div>'+
+        '<div class="link-add"><input type="url" id="e-url" placeholder="https://" inputmode="url" autocomplete="off">'+
+        '<input type="text" id="e-ulabel" maxlength="80" placeholder="Label, e.g. Speech video on Google Drive">'+
+        '<button type="button" class="btn ghost" id="e-addlink">Add link</button></div>'+
+        '<p class="hint">Best for long videos or work kept elsewhere, such as YouTube, Google Drive, OneDrive or Scratch.</p></div>'+
       '<p class="form-error" id="e-err" role="alert" hidden></p>'+
     '</div>'+
     '<footer class="sheet-foot">'+(isNew?'':'<button type="button" class="btn danger-ghost" id="e-del">Delete entry</button>')+
@@ -661,6 +731,56 @@ function openEntry(id){
   }
   drawPhotos();
 
+  function drawFiles(){
+    var g = $('#e-files',d);
+    g.innerHTML = keepFiles.concat(addedFiles).map(function(f){
+      return '<div class="frow"><b class="ftype">'+fileType(f)+'</b><span class="fname">'+esc(f.name)+'</span><small>'+sizeLabel(f.size)+'</small>'+
+        '<button type="button" class="icon-btn" data-rmf="'+f.id+'" aria-label="Remove '+esc(f.name)+'">×</button></div>';
+    }).join('');
+    $$('[data-rmf]',g).forEach(function(b){ b.onclick = function(){
+      var id = b.getAttribute('data-rmf');
+      keepFiles = keepFiles.filter(function(f){ return f.id!==id; });
+      addedFiles = addedFiles.filter(function(f){ return f.id!==id; });
+      drawFiles();
+    }; });
+  }
+  function drawLinks(){
+    var g = $('#e-links',d);
+    g.innerHTML = links.map(function(l,i){
+      return '<div class="frow"><b class="ftype">LINK</b><span class="fname">'+esc(l.label || l.url)+'<small class="furl">'+esc(l.url)+'</small></span>'+
+        '<button type="button" class="icon-btn" data-rml="'+i+'" aria-label="Remove link">×</button></div>';
+    }).join('');
+    $$('[data-rml]',g).forEach(function(b){ b.onclick = function(){ links.splice(+b.getAttribute('data-rml'),1); drawLinks(); }; });
+  }
+  function addLink(){
+    var raw = $('#e-url',d).value.trim(); if(!raw) return true;
+    if(!/^https?:\/\//i.test(raw)) raw = 'https://'+raw;
+    var u = safeURL(raw);
+    if(!u){ var err = $('#e-err',d); err.textContent = 'That web link doesn’t look right. Paste the full address, starting with https://'; err.hidden = false; return false; }
+    links.push({url:u, label:$('#e-ulabel',d).value.trim()});
+    $('#e-url',d).value = ''; $('#e-ulabel',d).value = ''; $('#e-err',d).hidden = true;
+    drawLinks(); return true;
+  }
+  drawFiles(); drawLinks();
+  $('#e-addlink',d).onclick = addLink;
+  $('#e-url',d).onkeydown = function(ev){ if(ev.key==='Enter'){ ev.preventDefault(); addLink(); } };
+  $('#e-attach',d).onchange = function(ev){
+    var files = Array.prototype.slice.call(ev.target.files||[]); ev.target.value = '';
+    if(!files.length) return;
+    var form = $('#entry-form',d); form.classList.add('busy');
+    var tooBig = [];
+    files.reduce(function(p,f){ return p.then(function(){
+      if(/^image\/(jpeg|png|webp|heic|heif)$/i.test(f.type)){
+        return processImage(f).then(function(r){ r.url = URL.createObjectURL(r.blob); added.push(r); }).catch(function(err){ toast(err.message); });
+      }
+      if(f.size > MAX_FILE){ tooBig.push(f.name); return; }
+      addedFiles.push({id:uid(), blob:f, name:f.name || 'file', type:f.type || '', size:f.size});
+    }); }, Promise.resolve()).then(function(){
+      form.classList.remove('busy'); drawPhotos(); drawFiles();
+      if(tooBig.length) toast(tooBig.join(', ')+(tooBig.length>1?' are':' is')+' over 50 MB. Add it as a web link instead.');
+    });
+  };
+
   $('#e-file',d).onchange = function(ev){
     var files = Array.prototype.slice.call(ev.target.files||[]); ev.target.value = '';
     if(!files.length) return;
@@ -677,7 +797,7 @@ function openEntry(id){
       .then(function(ok){
         if(!ok) return;
         saved = true; added.forEach(function(p){ URL.revokeObjectURL(p.url); });
-        Promise.all((src.photoIds||[]).map(function(p){ return db.del('photos',p); })).then(function(){ return db.del('entries',e.id); }).then(function(){
+        Promise.all((src.photoIds||[]).concat((src.files||[]).map(function(f){ return f.id; })).map(function(p){ return db.del('photos',p); })).then(function(){ return db.del('entries',e.id); }).then(function(){
           S.entries = S.entries.filter(function(x){ return x.id!==e.id; });
           d.close(); toast('Entry deleted'); rerender();
         });
@@ -698,11 +818,17 @@ function openEntry(id){
       : !e.childIds.length ? 'Choose at least one child who took part.'
       : !e.areas.length ? 'Choose at least one learning area.' : '';
     if(problem){ err.textContent = problem; err.hidden = false; err.scrollIntoView({block:'nearest'}); return; }
+    if(!addLink()) return;
     err.hidden = true;
-    var removed = (src ? src.photoIds||[] : []).filter(function(p){ return keep.indexOf(p) < 0; });
+    var keptFileIds = keepFiles.map(function(f){ return f.id; });
+    var removed = (src ? src.photoIds||[] : []).filter(function(p){ return keep.indexOf(p) < 0; })
+      .concat((src ? src.files||[] : []).map(function(f){ return f.id; }).filter(function(id){ return keptFileIds.indexOf(id) < 0; }));
     e.photoIds = keep.concat(added.map(function(p){ return p.id; }));
+    e.files = keepFiles.concat(addedFiles.map(function(f){ return {id:f.id, name:f.name, type:f.type, size:f.size}; }));
+    e.links = links;
     e.updatedAt = Date.now();
     var jobs = added.map(function(p){ return db.put('photos',{id:p.id, blob:p.blob, w:p.w, h:p.h}); })
+      .concat(addedFiles.map(function(f){ return db.put('photos',{id:f.id, blob:f.blob, name:f.name, type:f.type, size:f.size, kind:'file'}); }))
       .concat(removed.map(function(p){ if(urlCache.has(p)){ URL.revokeObjectURL(urlCache.get(p)); urlCache.delete(p); } return db.del('photos',p); }));
     Promise.all(jobs).then(function(){ return db.put('entries',e); }).then(function(){
       saved = true;
@@ -741,13 +867,13 @@ function drawCov(){
   var max = Math.max(1, Math.max.apply(null, stats.map(function(s){ return s.n; })));
   var covered = stats.filter(function(s){ return s.n>0; }).length;
   var totalMin = list.reduce(function(s,e){ return s+(+e.minutes||0); },0);
-  var photos = list.reduce(function(s,e){ return s+(e.photoIds||[]).length; },0);
+  var photos = list.reduce(function(s,e){ return s+(e.photoIds||[]).length+(e.files||[]).length+(e.links||[]).length; },0);
   $('#cov').innerHTML =
     '<div class="summary">'+
       '<div><b>'+list.length+'</b><span>Entries</span></div>'+
       '<div><b>'+hours(totalMin)+'</b><span>Recorded time</span></div>'+
       '<div><b>'+covered+'<small style="font-size:.55em;opacity:.6"> / 8</small></b><span>Learning areas</span></div>'+
-      '<div><b>'+photos+'</b><span>Photos</span></div>'+
+      '<div><b>'+photos+'</b><span>Photos, files and links</span></div>'+
     '</div><div class="cov">'+
     stats.map(function(s){
       return '<div class="cov-row" style="--a:'+s.a.color+'">'+
@@ -809,6 +935,10 @@ function drawReport(){
       (r.notes && e.notes ? '<p>'+esc(e.notes)+'</p>' : '')+
       (others.length ? '<div class="also">Also covers '+others.map(function(x){ return esc(AREA[x].full); }).join(', ')+'</div>' : '')+
       (r.photos && (e.photoIds||[]).length ? '<div class="rep-photos">'+e.photoIds.map(function(p){ return '<img alt="Evidence photo" data-photo="'+p+'">'; }).join('')+'</div>' : '')+
+      ((e.files||[]).length || (e.links||[]).length ? '<ul class="rep-files">'+
+        (e.files||[]).map(function(f){ return '<li><b>'+fileType(f)+'</b> '+esc(f.name)+' <span>('+sizeLabel(f.size)+', kept in the family’s records)</span></li>'; }).join('')+
+        (e.links||[]).map(function(l){ return '<li><b>LINK</b> '+esc(l.label || 'Web link')+' <span>'+esc(l.url)+'</span></li>'; }).join('')+
+      '</ul>' : '')+
     '</div>';
   }
   var body = '';
@@ -888,7 +1018,7 @@ function openChild(id){
       .then(function(ok){
         if(!ok) return;
         var jobs = [];
-        only.forEach(function(e){ (e.photoIds||[]).forEach(function(p){ jobs.push(db.del('photos',p)); }); jobs.push(db.del('entries',e.id)); });
+        only.forEach(function(e){ (e.photoIds||[]).concat((e.files||[]).map(function(f){ return f.id; })).forEach(function(p){ jobs.push(db.del('photos',p)); }); jobs.push(db.del('entries',e.id)); });
         shared.forEach(function(e){ e.childIds = e.childIds.filter(function(x){ return x!==c.id; }); jobs.push(db.put('entries',e)); });
         jobs.push(db.del('children',c.id));
         Promise.all(jobs).then(function(){
@@ -909,14 +1039,17 @@ function isStandalone(){ return (window.matchMedia && matchMedia('(display-mode:
 function isIOS(){ return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1); }
 function blobToDataURL(b){ return new Promise(function(res,rej){ var r = new FileReader(); r.onload = function(){ res(r.result); }; r.onerror = rej; r.readAsDataURL(b); }); }
 function dataURLToBlob(s){
-  var i = s.indexOf(','), head = s.slice(0,i), mime = (head.match(/data:([^;]+)/)||[])[1] || 'image/jpeg';
+  var i = s.indexOf(','); if(i < 0) return new Blob([]);
+  var head = s.slice(0,i), mime = (head.match(/data:([^;]+)/)||[])[1] || 'image/jpeg';
   var bin = atob(s.slice(i+1)), u = new Uint8Array(bin.length);
   for(var j=0;j<bin.length;j++) u[j] = bin.charCodeAt(j);
   return new Blob([u],{type:mime});
 }
 function buildBackup(){
   return db.all('photos').then(function(photos){
-    return Promise.all(photos.map(function(p){ return blobToDataURL(p.blob).then(function(data){ return {id:p.id, w:p.w, h:p.h, data:data}; }); }));
+    return Promise.all(photos.map(function(p){ return blobToDataURL(p.blob).then(function(data){
+      return {id:p.id, w:p.w, h:p.h, name:p.name, type:p.type, size:p.size, kind:p.kind, data:data};
+    }); }));
   }).then(function(photos){
     var data = {app:APP_ID, version:1, exportedAt:new Date().toISOString(), familyName:S.meta.familyName||'', children:S.children, entries:S.entries, photos:photos};
     return new Blob([JSON.stringify(data)],{type:'application/json'});
@@ -935,7 +1068,7 @@ function renderSettings(el){
     '<div class="view-head"><h2>Backup and settings</h2><p>Your records are stored only in this browser on this device. Nothing is uploaded anywhere.</p></div>'+
     '<div class="panels">'+
       '<section class="panel"><h3>Back up your records</h3>'+
-        '<p>Download a backup file regularly and keep it somewhere safe, such as OneDrive, Google Drive or a USB stick. It includes every entry and photo.</p>'+
+        '<p>Download a backup file regularly and keep it somewhere safe, such as OneDrive, Google Drive or a USB stick. It includes every entry, photo and attached file. Large video files make large backups, so web links are better for long recordings.</p>'+
         '<p class="status'+(last && Date.now()-last.getTime() < 30*864e5 ? '' : ' bad')+'">'+(last ? 'Last backup: '+fmtLong(isoOf(last)) : 'No backup made yet')+'</p>'+
         '<div class="btns"><button type="button" class="btn primary" id="s-export"'+(IN_FRAME?' disabled':'')+'>Download backup</button>'+
         (canShare && !IN_FRAME ? '<button type="button" class="btn ghost" id="s-share">Share backup</button>' : '')+'</div>'+
@@ -983,14 +1116,18 @@ function renderSettings(el){
     file.text().then(function(t){ return JSON.parse(t); }).then(function(data){
       if(!data || data.app !== APP_ID || !Array.isArray(data.entries) || !Array.isArray(data.children)) throw new Error('bad');
       return confirmBox({title:'Replace all records?', danger:true, ok:'Replace records',
-        body:'This backup from '+fmtLong(isoOf(new Date(data.exportedAt)))+' holds '+plural(data.children.length,'child','children')+', '+plural(data.entries.length,'entry','entries')+' and '+plural((data.photos||[]).length,'photo')+'. Everything currently on this device will be replaced.'})
+        body:'This backup from '+fmtLong(isoOf(new Date(data.exportedAt)))+' holds '+plural(data.children.length,'child','children')+', '+plural(data.entries.length,'entry','entries')+' and '+plural((data.photos||[]).length,'photo or file','photos and files')+'. Everything currently on this device will be replaced.'})
       .then(function(ok){
         if(!ok) return;
         return wipe().then(function(){
           var jobs = [];
           data.children.forEach(function(c){ jobs.push(db.put('children',c)); });
           data.entries.forEach(function(e){ jobs.push(db.put('entries',e)); });
-          (data.photos||[]).forEach(function(p){ jobs.push(db.put('photos',{id:p.id, w:p.w, h:p.h, blob:dataURLToBlob(p.data)})); });
+          (data.photos||[]).forEach(function(p){
+            var rec = {id:p.id, w:p.w, h:p.h, blob:dataURLToBlob(p.data)};
+            if(p.kind==='file'){ rec.kind = 'file'; rec.name = p.name; rec.type = p.type; rec.size = p.size; }
+            jobs.push(db.put('photos',rec));
+          });
           jobs.push(db.put('meta',{key:'familyName', value:data.familyName||''}));
           jobs.push(db.put('meta',{key:'lastBackup', value:data.exportedAt}));
           return Promise.all(jobs);
@@ -1012,7 +1149,7 @@ function renderSettings(el){
     navigator.storage.estimate().then(function(est){
       var mb = (est.usage||0)/1048576;
       var p = $('#s-storage'); if(!p) return;
-      p.textContent = 'About '+(mb < 10 ? mb.toFixed(1) : Math.round(mb))+' MB used by '+plural(S.entries.length,'entry','entries')+' and their photos.';
+      p.textContent = 'About '+(mb < 10 ? mb.toFixed(1) : Math.round(mb))+' MB used by '+plural(S.entries.length,'entry','entries')+' and their photos and files.';
     }).catch(function(){});
     if(navigator.storage.persisted && !IN_FRAME){
       navigator.storage.persisted().then(function(yes){
@@ -1081,10 +1218,10 @@ function seedExamples(){
       [6,'Persuasive letter to the shire about bike paths',['eng','hass'],'Written work',60,L,'Planned with a PEEL outline, wrote a two-page letter and edited for paragraphing. Next step: varying sentence openers.','letter','Letter draft'],
       [9,'Python turtle: drawing spirals with loops',['tech','mat'],'Project',90,L,'Wrote a for loop that turns by a fixed angle and grows the line each step. Experimented with angles to make different spiral shapes.','spiral','Turtle spiral'],
       [12,'Swimming lessons: stroke correction',['hpe'],'Practical skill',45,B,'Weekly lesson at the local pool. Both working on bilateral breathing in freestyle.',null],
-      [15,'Reading log: Charlotte’s Web, chapters 1–8',['eng'],'Reading',150,M,'Read aloud together and independently. Discussed how Wilbur’s feelings change and predicted what Charlotte will do.',null],
+      [15,'Reading log: Charlotte’s Web, chapters 1–8',['eng'],'Reading',150,M,'Read aloud together and independently. Discussed how Wilbur’s feelings change and predicted what Charlotte will do.',null,null,{files:[{name:'reading-log.txt',type:'text/plain',text:'Charlotte’s Web reading log\n\nCh 1-2: Fern saves Wilbur.\nCh 3-5: Wilbur moves to the barn and feels lonely.\nCh 6-8: Wilbur meets Charlotte.\n'}]}],
       [19,'WA Museum visit: the six Noongar seasons',['hass','sci'],'Excursion',180,B,'Learned the six Noongar seasons and matched each one to plants and animals we see near home. Made a seasons wheel afterwards.','seasons','Seasons wheel'],
       [23,'Watercolour wash landscapes',['art'],'Project',60,M,'Practised wet-on-wet washes for skies and layering for hills. Painted a coastal scene.','paint','Watercolour'],
-      [30,'Rain gauge readings for the month',['sci','mat'],'Experiment',30,B,'Read the gauge each morning and graphed daily rainfall. Compared our total with the Bureau of Meteorology figure for the nearest station.','chart','Rainfall graph'],
+      [30,'Rain gauge readings for the month',['sci','mat'],'Experiment',30,B,'Read the gauge each morning and graphed daily rainfall. Compared our total with the Bureau of Meteorology figure for the nearest station.','chart','Rainfall graph',{files:[{name:'rainfall-readings.csv',type:'text/csv',text:'date,rainfall_mm\n1 Sep,0\n2 Sep,4.2\n3 Sep,11.6\n4 Sep,0.4\n5 Sep,0\n6 Sep,7.8\n7 Sep,2.0\n'}],links:[{url:'https://www.bom.gov.au/climate/data/',label:'Bureau of Meteorology climate data'}]}],
       [38,'Timeline of Australian Federation',['hass'],'Project',90,L,'Researched key events from the 1890s conventions to 1901 and built an illustrated timeline.','timeline','Federation timeline'],
       [45,'Times tables speed practice',['mat'],'Worksheet',20,M,'Mixed 3, 4 and 8 times tables. 38 out of 40 correct in five minutes.',null],
       [52,'Kitchen chemistry: red cabbage pH indicator',['sci'],'Experiment',60,B,'Made indicator from red cabbage and tested vinegar, lemon juice, water, baking soda and soap. Ordered results on a pH scale.','cabbage','pH indicator'],
@@ -1095,8 +1232,12 @@ function seedExamples(){
       return ex.reduce(function(p,r,j){
         return p.then(function(){
           var ph = r[7] ? examplePhoto(r[7], AREA[r[2][0]].color, r[8]).then(function(blob){ var id = uid(); return db.put('photos',{id:id, blob:blob, w:960, h:720}).then(function(){ return [id]; }); }) : Promise.resolve([]);
+          var extra = r[9] || {}, files = (extra.files||[]).map(function(f){ var b = new Blob([f.text],{type:f.type}); return {id:uid(), name:f.name, type:f.type, size:b.size, blob:b}; });
           return ph.then(function(ids){
-            return db.put('entries',{id:uid(), date:daysAgo(r[0]), title:r[1], areas:r[2], type:r[3], minutes:r[4], childIds:r[5], notes:r[6], photoIds:ids, createdAt:now-r[0]*864e5+j, updatedAt:now});
+            return Promise.all(files.map(function(f){ return db.put('photos',{id:f.id, blob:f.blob, name:f.name, type:f.type, size:f.size, kind:'file'}); })).then(function(){ return ids; });
+          }).then(function(ids){
+            return db.put('entries',{id:uid(), date:daysAgo(r[0]), title:r[1], areas:r[2], type:r[3], minutes:r[4], childIds:r[5], notes:r[6], photoIds:ids,
+              files:files.map(function(f){ return {id:f.id, name:f.name, type:f.type, size:f.size}; }), links:extra.links||[], createdAt:now-r[0]*864e5+j, updatedAt:now});
           });
         });
       }, Promise.resolve());

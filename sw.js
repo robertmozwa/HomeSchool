@@ -1,6 +1,6 @@
 /* Homeschool Evidence Recorder service worker.
    Change CACHE (e.g. v2, v3) each time you publish an update so families get the new version. */
-const CACHE = 'evidence-recorder-v1';
+const CACHE = 'evidence-recorder-v2';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-180.png'];
 
 self.addEventListener('install', (e) => {
