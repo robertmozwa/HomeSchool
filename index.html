@@ -304,6 +304,23 @@ dialog.small{width:min(440px,calc(100vw - 24px))}
 .rep-files b{font-size:.68rem;letter-spacing:.06em;color:var(--muted);margin-right:4px}
 .rep-files span{color:var(--muted);word-break:break-all}
 
+/* Curriculum strands */
+.entry .strands{font-size:.84rem;color:var(--muted);margin-top:-2px}
+.strand-groups{display:flex;flex-direction:column;gap:12px}
+.strand-groups:empty{display:none}
+.strand-group{border-left:3px solid var(--a);padding-left:12px}
+.strand-group legend{color:var(--ink)!important;font-size:.86rem}
+.pick.small .toggle span{min-height:34px;padding:5px 12px 5px 10px;font-size:.84rem}
+.strand-group .toggle{--a:inherit}
+.cov-strands{grid-column:2 / -1;display:flex;flex-wrap:wrap;gap:4px 6px;font-size:.8rem}
+.cov-strands .st{padding:2px 8px;border-radius:6px;background:color-mix(in srgb,var(--a) 12%,var(--sheet))}
+.cov-strands .st b{font-variant-numeric:tabular-nums;margin-left:2px}
+.cov-strands .st.zero{background:transparent;border:1px dashed var(--rule);color:var(--muted)}
+@media (max-width:520px){.cov-strands{grid-column:1 / -1}}
+.curlink{font-size:.86rem;margin-top:5px}
+.curlink b{font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.rep-table td.parts{font-size:.82rem;color:var(--muted);min-width:180px}
+
 /* Print: only the report, always on white */
 @media print{
   :root,:root[data-theme="dark"],:root:not([data-theme="light"]){
@@ -360,17 +377,81 @@ dialog.small{width:min(440px,calc(100vw - 24px))}
 /* ---------- Constants ---------- */
 var APP_ID = 'homeschool-evidence-recorder';
 var IN_FRAME = (function(){ try { return window.self !== window.top; } catch(e){ return true; } })();
-var AREAS = [
-  {id:'eng',  name:'English',        full:'English',                         color:'#e0703a'},
-  {id:'mat',  name:'Mathematics',    full:'Mathematics',                     color:'#3a7be0'},
-  {id:'sci',  name:'Science',        full:'Science',                         color:'#2fa36b'},
-  {id:'hass', name:'HASS',           full:'Humanities and Social Sciences',  color:'#b8862b'},
-  {id:'art',  name:'The Arts',       full:'The Arts',                        color:'#c4489a'},
-  {id:'hpe',  name:'Health & PE',    full:'Health and Physical Education',   color:'#d64545'},
-  {id:'tech', name:'Technologies',   full:'Technologies',                    color:'#6b5bd6'},
-  {id:'lang', name:'Languages',      full:'Languages',                       color:'#1fa3a8'}
-];
-var AREA = {}; AREAS.forEach(function(a){ AREA[a.id] = a; });
+/* Curriculum by state or territory. Area ids are shared across states so records keep their
+   learning area if a family moves. Strands are the curriculum's own strand or sub-strand names. */
+var COLORS = {eng:'#e0703a', mat:'#3a7be0', sci:'#2fa36b', scitech:'#3f9a5c', hass:'#b8862b', art:'#c4489a', hpe:'#d64545', tech:'#6b5bd6', lang:'#1fa3a8', cap:'#5f7a8a'};
+var AC9 = {
+  eng:  ['Language','Literature','Literacy'],
+  mat:  ['Number','Algebra','Measurement','Space','Statistics','Probability'],
+  sci:  ['Biological sciences','Chemical sciences','Earth and space sciences','Physical sciences','Science as a human endeavour','Science inquiry'],
+  hass: ['History','Geography','Civics and citizenship','Economics and business','Inquiry and skills'],
+  art:  ['Dance','Drama','Media arts','Music','Visual arts'],
+  hpe:  ['Personal, social and community health','Movement and physical activity'],
+  tech: ['Design and technologies','Digital technologies'],
+  lang: ['Communicating meaning','Understanding language and culture']
+};
+function std(names, strands, extra){
+  var base = [
+    {id:'eng', name:'English', full:'English'},
+    {id:'mat', name:'Mathematics', full:'Mathematics'},
+    {id:'sci', name:'Science', full:'Science'},
+    {id:'hass', name:'HASS', full:'Humanities and Social Sciences'},
+    {id:'art', name:'The Arts', full:'The Arts'},
+    {id:'hpe', name:'Health & PE', full:'Health and Physical Education'},
+    {id:'tech', name:'Technologies', full:'Technologies'},
+    {id:'lang', name:'Languages', full:'Languages'}
+  ];
+  return base.map(function(a){
+    var o = Object.assign({}, a, (names||{})[a.id] || {});
+    o.color = COLORS[a.id]; o.strands = (strands||{})[a.id] || AC9[a.id]; return o;
+  }).concat(extra || []);
+}
+var CURRICULA = {
+  WA: {state:'Western Australia', name:'Western Australian Curriculum', areas: std(null, {
+    mat: ['Number and algebra','Measurement and geometry','Probability and statistics'],
+    sci: ['Biological sciences','Chemical sciences','Earth and space sciences','Physical sciences','Science inquiry'],
+    hass:['History','Geography','Civics and citizenship','Economics and business','Humanities and social sciences skills']
+  })},
+  NSW: {state:'New South Wales', name:'NSW syllabuses (NESA)', areas: [
+    {id:'eng', name:'English', full:'English', strands:['Oral language and communication','Vocabulary','Reading, viewing and comprehending','Creating written texts','Spelling','Handwriting and digital transcription','Understanding and responding to literature']},
+    {id:'mat', name:'Mathematics', full:'Mathematics', strands:['Number and algebra','Measurement and space','Statistics and probability']},
+    {id:'scitech', name:'Science & Tech', full:'Science and Technology (K–6)', strands:['Living world','Material world','Physical world','Earth and space','Digital technologies','Working scientifically','Design and production']},
+    {id:'sci', name:'Science', full:'Science (7–10)', strands:['Living world','Chemical world','Physical world','Earth and space','Working scientifically']},
+    {id:'hass', name:'HSIE', full:'Human Society and Its Environment', strands:['History','Geography','Commerce','Aboriginal studies']},
+    {id:'hpe', name:'PDHPE', full:'Personal Development, Health and Physical Education', strands:['Health, wellbeing and relationships','Movement skill and performance','Healthy, safe and active lifestyles']},
+    {id:'art', name:'Creative Arts', full:'Creative Arts', strands:['Visual arts','Music','Drama','Dance']},
+    {id:'tech', name:'Technology', full:'Technology (7–10)', strands:['Agriculture and food technologies','Digital technologies','Engineered systems','Material technologies']},
+    {id:'lang', name:'Languages', full:'Languages', strands:['Communicating','Understanding']}
+  ].map(function(a){ a.color = COLORS[a.id]; return a; })},
+  VIC: {state:'Victoria', name:'Victorian Curriculum F–10 (Version 2.0)', areas: std({hass:{name:'Humanities', full:'Humanities'}}, {
+    hass:['History','Geography','Civics and citizenship','Economics and business'],
+    art: ['Dance','Drama','Media arts','Music','Visual arts','Visual communication design']
+  }, [{id:'cap', name:'Capabilities', full:'Capabilities', color:COLORS.cap, strands:['Critical and creative thinking','Ethical','Intercultural','Personal and social']}])},
+  QLD: {state:'Queensland', name:'Australian Curriculum v9', areas: std()},
+  SA:  {state:'South Australia', name:'Australian Curriculum v9', areas: std()},
+  TAS: {state:'Tasmania', name:'Australian Curriculum v9', areas: std()},
+  ACT: {state:'Australian Capital Territory', name:'Australian Curriculum v9', areas: std()},
+  NT:  {state:'Northern Territory', name:'Australian Curriculum v9', areas: std()}
+};
+var CUR_ORDER = ['WA','NSW','VIC','QLD','SA','TAS','ACT','NT'];
+/* Every area any state uses, so chips still show if an entry came from another state's curriculum. */
+var ANY_AREA = {};
+CUR_ORDER.slice().reverse().forEach(function(k){ CURRICULA[k].areas.forEach(function(a){ ANY_AREA[a.id] = a; }); });
+CURRICULA.WA.areas.forEach(function(a){ ANY_AREA[a.id] = a; });
+var CUR = 'WA', AREAS = CURRICULA.WA.areas, AREA = {};
+function setCurriculum(code){
+  CUR = CURRICULA[code] ? code : 'WA';
+  AREAS = CURRICULA[CUR].areas; AREA = {};
+  AREAS.forEach(function(a){ AREA[a.id] = a; });
+}
+function areaOf(id, cur){
+  var list = CURRICULA[cur] ? CURRICULA[cur].areas : AREAS;
+  return list.find(function(a){ return a.id===id; }) || AREA[id] || ANY_AREA[id];
+}
+function stateOptions(sel){
+  return CUR_ORDER.map(function(k){ return '<option value="'+k+'"'+(k===sel?' selected':'')+'>'+CURRICULA[k].state+' – '+CURRICULA[k].name+'</option>'; }).join('');
+}
+setCurriculum('WA');
 var TYPES = ['Written work','Worksheet','Project','Experiment','Excursion','Reading','Discussion','Practical skill','Online course','Other'];
 var YEARS = ['Kindergarten','Pre-primary'].concat(Array.from({length:12},function(_,i){ return 'Year '+(i+1); }));
 var CHILD_COLORS = ['#3a7be0','#e0703a','#2fa36b','#c4489a','#6b5bd6','#1fa3a8','#b8862b','#d64545'];
@@ -448,6 +529,7 @@ function load(){
     S.children = r[0].sort(function(a,b){ return a.createdAt-b.createdAt; });
     S.entries = r[1]; sortEntries();
     S.meta = {}; r[2].forEach(function(m){ S.meta[m.key] = m.value; });
+    setCurriculum(S.meta.state || 'WA');
   });
 }
 function sortEntries(){ S.entries.sort(function(a,b){ return b.date.localeCompare(a.date) || (b.createdAt-a.createdAt); }); }
@@ -526,7 +608,11 @@ function processImage(file){
 }
 
 /* ---------- Small UI pieces ---------- */
-function areaChip(id){ var a = AREA[id]; if(!a) return ''; return '<span class="chip" style="--a:'+a.color+'"><i class="dot"></i>'+esc(a.name)+'</span>'; }
+function areaChip(id, cur){ var a = areaOf(id, cur); if(!a) return ''; return '<span class="chip" style="--a:'+a.color+'"><i class="dot"></i>'+esc(a.name)+'</span>'; }
+function strandNames(e, areaId){
+  return (e.strands||[]).filter(function(k){ return !areaId || k.indexOf(areaId+'::')===0; }).map(function(k){ return k.split('::')[1]; });
+}
+function strandText(e){ return strandNames(e).join(' \u00b7 '); }
 function whoHTML(ids){
   return ids.map(function(id){ var c = child(id); return c ? '<span class="who"><i class="dot" style="--a:'+c.color+'"></i>'+esc(c.name)+'</span>' : ''; }).join(' ');
 }
@@ -593,17 +679,19 @@ function welcomeHTML(){
   return '<section class="welcome">'+
     '<div><h2>Keep a simple record of everything your children learn.</h2>'+
     '<p>Photos of work, outings, experiments and reading, sorted by learning area and ready to show at your home education moderator visit. Everything stays on this device. No account needed.</p>'+
+    '<label class="field" style="max-width:420px;margin-bottom:16px"><span>Your state or territory</span><select id="w-state">'+stateOptions(CUR)+'</select></label>'+
     '<div class="btns"><button class="btn primary" id="w-add" type="button">Add your first child</button>'+
     '<button class="btn ghost" id="w-demo" type="button">Explore with example data</button></div></div>'+
     '<ol class="steps">'+
       '<li><div><b>Add your children</b><span>Name and year level.</span></div></li>'+
-      '<li><div><b>Record evidence as you go</b><span>A title, a few notes, the learning areas and a photo or two from your phone.</span></div></li>'+
+      '<li><div><b>Record evidence as you go</b><span>A title, a few notes, the learning areas and curriculum strands, and a photo or two from your phone.</span></div></li>'+
       '<li><div><b>Check coverage and print a report</b><span>See which learning areas need attention, then print or save a tidy PDF report.</span></div></li>'+
     '</ol></section>';
 }
 function renderEntries(el){
   if(!S.children.length && !S.entries.length){
     el.innerHTML = previewNote() + welcomeHTML();
+    $('#w-state').onchange = function(ev){ setCurriculum(ev.target.value); setMeta('state', CUR); };
     $('#w-add').onclick = function(){ location.hash = 'children'; setTimeout(function(){ openChild(); }, 30); };
     $('#w-demo').onclick = function(){ seedExamples().then(function(){ toast('Example data loaded'); rerender(); }); };
     return;
@@ -626,7 +714,7 @@ function filteredEntries(){
   return S.entries.filter(function(e){
     if(f.child && e.childIds.indexOf(f.child) < 0) return false;
     if(f.area && e.areas.indexOf(f.area) < 0) return false;
-    var hay = e.title+' '+(e.notes||'')+' '+(e.type||'')+' '+(e.files||[]).map(function(f){ return f.name; }).join(' ')+' '+(e.links||[]).map(function(l){ return l.label+' '+l.url; }).join(' ');
+    var hay = e.title+' '+(e.notes||'')+' '+(e.type||'')+' '+strandText(e)+' '+(e.codes||'')+' '+(e.files||[]).map(function(f){ return f.name; }).join(' ')+' '+(e.links||[]).map(function(l){ return l.label+' '+l.url; }).join(' ');
     if(q && hay.toLowerCase().indexOf(q) < 0) return false;
     return true;
   });
@@ -655,7 +743,8 @@ function drawList(){
       '<div class="entry-date"><b>'+d.getDate()+'</b><span>'+d.toLocaleDateString('en-AU',{weekday:'short'})+'</span></div>'+
       '<div class="entry-body"><h3>'+esc(e.title)+'</h3>'+
       '<div class="meta">'+meta.map(function(x){ return '<span>'+x+'</span>'; }).join('')+'</div>'+
-      '<div class="chips">'+e.areas.map(areaChip).join('')+'</div>'+
+      '<div class="chips">'+e.areas.map(function(a){ return areaChip(a, e.curriculum); }).join('')+'</div>'+
+      (strandText(e) ? '<p class="strands">'+esc(strandText(e))+'</p>' : '')+
       (e.notes ? '<p class="notes">'+esc(e.notes)+'</p>' : '')+
       (ph.length ? '<div class="thumbs">'+ph.slice(0,4).map(function(p){ return '<img alt="" data-photo="'+p+'">'; }).join('')+(ph.length>4?'<span class="more">+'+(ph.length-4)+'</span>':'')+'</div>' : '')+
       ((e.files||[]).length || (e.links||[]).length ? '<div class="files">'+(e.files||[]).map(fileChip).join('')+(e.links||[]).map(linkChip).join('')+'</div>' : '')+
@@ -683,6 +772,8 @@ function openEntry(id){
     id:uid(), date:todayISO(), title:'', notes:'', areas:[], type:'', minutes:'', photoIds:[], createdAt:Date.now(),
     childIds: S.children.length===1 ? [S.children[0].id] : lastKids
   };
+  if(!CURRICULA[e.curriculum]) e.curriculum = CUR;
+  var selAreas = e.areas.slice(), selStrands = (e.strands||[]).slice();
   var keep = (e.photoIds||[]).slice(), added = [], saved = false;
   var keepFiles = (e.files||[]).slice(), addedFiles = [], links = (e.links||[]).slice();
   var d = $('#sheet');
@@ -695,9 +786,10 @@ function openEntry(id){
       '<fieldset class="field"><legend>Who took part?</legend><div class="pick">'+S.children.map(function(c){
         return '<label class="toggle" style="--a:'+c.color+'"><input type="checkbox" name="kid" value="'+c.id+'"'+(e.childIds.indexOf(c.id)>=0?' checked':'')+'><span>'+esc(c.name)+'</span></label>';
       }).join('')+'</div></fieldset>'+
-      '<fieldset class="field"><legend>Learning areas</legend><div class="pick">'+AREAS.map(function(a){
-        return '<label class="toggle" style="--a:'+a.color+'" title="'+esc(a.full)+'"><input type="checkbox" name="area" value="'+a.id+'"'+(e.areas.indexOf(a.id)>=0?' checked':'')+'><span>'+esc(a.name)+'</span></label>';
-      }).join('')+'</div></fieldset>'+
+      '<label class="field"><span>State or territory curriculum</span><select id="e-cur">'+stateOptions(e.curriculum)+'</select></label>'+
+      '<fieldset class="field"><legend>Learning areas</legend><div class="pick" id="e-areas"></div></fieldset>'+
+      '<div id="e-strands" class="strand-groups"></div>'+
+      '<label class="field"><span>Curriculum codes or content descriptions (optional)</span><input type="text" id="e-codes" maxlength="300" value="'+esc(e.codes||'')+'" placeholder="e.g. AC9M4N05, or a line from the curriculum"></label>'+
       '<label class="field"><span>Type of evidence</span><select id="e-type"><option value="">Choose a type</option>'+TYPES.map(function(t){ return '<option'+(t===e.type?' selected':'')+'>'+t+'</option>'; }).join('')+'</select></label>'+
       '<label class="field"><span>Notes</span><textarea id="e-notes" rows="4" placeholder="What was learned, how it was done, and what comes next">'+esc(e.notes)+'</textarea></label>'+
       '<div class="field"><span>Photos</span><div class="photo-grid" id="e-photos"></div>'+
@@ -762,6 +854,34 @@ function openEntry(id){
     drawLinks(); return true;
   }
   drawFiles(); drawLinks();
+
+  function drawAreas(){
+    var cur = $('#e-cur',d).value, list = CURRICULA[cur].areas;
+    var ids = list.map(function(a){ return a.id; });
+    selAreas = selAreas.filter(function(x){ return ids.indexOf(x)>=0; });
+    selStrands = selStrands.filter(function(k){
+      var p = k.split('::'), a = list.find(function(x){ return x.id===p[0]; });
+      return a && selAreas.indexOf(p[0])>=0 && a.strands.indexOf(p[1])>=0;
+    });
+    $('#e-areas',d).innerHTML = list.map(function(a){
+      return '<label class="toggle" style="--a:'+a.color+'" title="'+esc(a.full)+'"><input type="checkbox" name="area" value="'+a.id+'"'+(selAreas.indexOf(a.id)>=0?' checked':'')+'><span>'+esc(a.name)+'</span></label>';
+    }).join('');
+    $('#e-strands',d).innerHTML = list.filter(function(a){ return selAreas.indexOf(a.id)>=0; }).map(function(a){
+      return '<fieldset class="field strand-group" style="--a:'+a.color+'"><legend>'+esc(a.full)+': which parts?</legend><div class="pick small">'+
+        a.strands.map(function(st){ var k = a.id+'::'+st;
+          return '<label class="toggle"><input type="checkbox" name="strand" value="'+esc(k)+'"'+(selStrands.indexOf(k)>=0?' checked':'')+'><span>'+esc(st)+'</span></label>';
+        }).join('')+'</div></fieldset>';
+    }).join('');
+    $$('input[name=area]',d).forEach(function(i){ i.onchange = function(){
+      if(i.checked){ if(selAreas.indexOf(i.value)<0) selAreas.push(i.value); } else selAreas = selAreas.filter(function(x){ return x!==i.value; });
+      drawAreas();
+    }; });
+    $$('input[name=strand]',d).forEach(function(i){ i.onchange = function(){
+      if(i.checked){ if(selStrands.indexOf(i.value)<0) selStrands.push(i.value); } else selStrands = selStrands.filter(function(x){ return x!==i.value; });
+    }; });
+  }
+  drawAreas();
+  $('#e-cur',d).onchange = drawAreas;
   $('#e-addlink',d).onclick = addLink;
   $('#e-url',d).onkeydown = function(ev){ if(ev.key==='Enter'){ ev.preventDefault(); addLink(); } };
   $('#e-attach',d).onchange = function(ev){
@@ -811,7 +931,10 @@ function openEntry(id){
     e.date = $('#e-date',d).value || todayISO();
     e.minutes = $('#e-min',d).value ? Math.max(0, Math.round(+$('#e-min',d).value)) : '';
     e.childIds = $$('input[name=kid]:checked',d).map(function(i){ return i.value; });
-    e.areas = $$('input[name=area]:checked',d).map(function(i){ return i.value; });
+    e.curriculum = $('#e-cur',d).value;
+    e.areas = selAreas.slice();
+    e.strands = selStrands.slice();
+    e.codes = $('#e-codes',d).value.trim();
     e.type = $('#e-type',d).value;
     e.notes = $('#e-notes',d).value.trim();
     var problem = !e.title ? 'Give the entry a title, such as “Fractions with paper strips”.'
@@ -835,6 +958,7 @@ function openEntry(id){
       added.forEach(function(p){ urlCache.set(p.id,p.url); });
       S.entries = S.entries.filter(function(x){ return x.id!==e.id; }); S.entries.push(e); sortEntries();
       setMeta('lastChildIds', e.childIds);
+      if(e.curriculum !== CUR){ setCurriculum(e.curriculum); setMeta('state', e.curriculum); }
       d.close(); toast(isNew ? 'Evidence saved' : 'Changes saved'); rerender();
     }).catch(function(){ err.textContent = 'This device ran out of space or blocked saving. Try fewer photos, or free up storage and save again.'; err.hidden = false; });
   };
@@ -862,7 +986,7 @@ function drawCov(){
   var list = S.entries.filter(function(e){ return e.date >= from && (!c.child || e.childIds.indexOf(c.child)>=0); });
   var stats = AREAS.map(function(a){
     var es = list.filter(function(e){ return e.areas.indexOf(a.id)>=0; });
-    return {a:a, n:es.length, min:es.reduce(function(s,e){ return s+(+e.minutes||0); },0), last:es.length ? es[0].date : null};
+    return {a:a, es:es, n:es.length, min:es.reduce(function(s,e){ return s+(+e.minutes||0); },0), last:es.length ? es[0].date : null};
   });
   var max = Math.max(1, Math.max.apply(null, stats.map(function(s){ return s.n; })));
   var covered = stats.filter(function(s){ return s.n>0; }).length;
@@ -872,15 +996,19 @@ function drawCov(){
     '<div class="summary">'+
       '<div><b>'+list.length+'</b><span>Entries</span></div>'+
       '<div><b>'+hours(totalMin)+'</b><span>Recorded time</span></div>'+
-      '<div><b>'+covered+'<small style="font-size:.55em;opacity:.6"> / 8</small></b><span>Learning areas</span></div>'+
+      '<div><b>'+covered+'<small style="font-size:.55em;opacity:.6"> / '+AREAS.length+'</small></b><span>Learning areas</span></div>'+
       '<div><b>'+photos+'</b><span>Photos, files and links</span></div>'+
-    '</div><div class="cov">'+
+    '</div><p class="hint" style="margin-bottom:10px">'+esc(CURRICULA[CUR].name)+'. Numbers beside each part show how many entries are linked to it; change your state in Backup and settings.</p><div class="cov">'+
     stats.map(function(s){
       return '<div class="cov-row" style="--a:'+s.a.color+'">'+
         '<div class="cov-name"><i class="dot"></i>'+esc(s.a.full)+'</div>'+
         '<div class="cov-bar" role="img" aria-label="'+s.n+' entries"><i style="width:'+(s.n/max*100)+'%"></i></div>'+
         '<div class="cov-num">'+s.n+'</div>'+
         '<div class="cov-sub">'+(s.n ? hours(s.min)+' recorded · most recent '+fmtShort(s.last) : '<span class="gap-flag">○ No evidence in this period</span>')+'</div>'+
+        (s.n ? '<div class="cov-strands">'+s.a.strands.map(function(st){
+          var k = s.a.id+'::'+st, n = s.es.filter(function(e){ return (e.strands||[]).indexOf(k)>=0; }).length;
+          return '<span class="st'+(n?'':' zero')+'">'+esc(st)+' <b>'+n+'</b></span>';
+        }).join('')+'</div>' : '')+
       '</div>';
     }).join('')+'</div>';
 }
@@ -927,19 +1055,30 @@ function drawReport(){
     var es = list.filter(function(e){ return e.areas.indexOf(a.id)>=0; });
     return {a:a, es:es, min:es.reduce(function(s,e){ return s+(+e.minutes||0); },0)};
   });
+  function curLine(e, inArea){
+    var parts = [], st = strandNames(e, inArea);
+    if(st.length) parts.push('<b>Curriculum:</b> '+esc(st.join(', ')));
+    if(e.codes) parts.push('<b>Links:</b> '+esc(e.codes));
+    return parts.join(' &nbsp; ');
+  }
   function entryHTML(e, showAreas, inArea){
     var others = inArea ? e.areas.filter(function(x){ return x!==inArea; }) : [];
     var bits = [fmtDate(e.date), e.type, minLabel(e.minutes)].filter(Boolean).join(' · ');
     return '<div class="rep-entry"><div class="rep-entry-top"><h4>'+esc(e.title)+'</h4><span class="when">'+esc(bits)+'</span></div>'+
-      (showAreas ? '<div class="chips" style="margin-top:6px">'+e.areas.map(areaChip).join('')+'</div>' : '')+
+      (showAreas ? '<div class="chips" style="margin-top:6px">'+e.areas.map(function(a){ return areaChip(a, e.curriculum); }).join('')+'</div>' : '')+
+      (curLine(e, inArea) ? '<div class="curlink">'+curLine(e, inArea)+'</div>' : '')+
       (r.notes && e.notes ? '<p>'+esc(e.notes)+'</p>' : '')+
-      (others.length ? '<div class="also">Also covers '+others.map(function(x){ return esc(AREA[x].full); }).join(', ')+'</div>' : '')+
+      (others.length ? '<div class="also">Also covers '+others.map(function(x){ var a = areaOf(x, e.curriculum); return esc(a ? a.full : x); }).join(', ')+'</div>' : '')+
       (r.photos && (e.photoIds||[]).length ? '<div class="rep-photos">'+e.photoIds.map(function(p){ return '<img alt="Evidence photo" data-photo="'+p+'">'; }).join('')+'</div>' : '')+
       ((e.files||[]).length || (e.links||[]).length ? '<ul class="rep-files">'+
         (e.files||[]).map(function(f){ return '<li><b>'+fileType(f)+'</b> '+esc(f.name)+' <span>('+sizeLabel(f.size)+', kept in the family’s records)</span></li>'; }).join('')+
         (e.links||[]).map(function(l){ return '<li><b>LINK</b> '+esc(l.label || 'Web link')+' <span>'+esc(l.url)+'</span></li>'; }).join('')+
       '</ul>' : '')+
     '</div>';
+  }
+  function coveredParts(x){
+    var got = x.a.strands.filter(function(st){ return x.es.some(function(e){ return (e.strands||[]).indexOf(x.a.id+'::'+st)>=0; }); });
+    return got.length ? got.join(', ') : (x.es.length ? 'Not specified' : '\u2013');
   }
   var body = '';
   if(!list.length){
@@ -954,10 +1093,10 @@ function drawReport(){
   var family = S.meta.familyName ? esc(S.meta.familyName) : '';
   box.innerHTML =
     '<header class="rep-head"><div><div class="eyebrow">Home education · Learning evidence</div><h2>'+esc(c.name)+(family?' '+family:'')+'</h2></div>'+
-    '<dl><dt>Year level</dt><dd>'+esc(c.yearLevel||'Not set')+'</dd><dt>Period</dt><dd>'+fmtShort(from)+' – '+fmtLong(to)+'</dd><dt>Entries</dt><dd>'+list.length+' · '+hours(totalMin)+'</dd></dl></header>'+
-    '<div class="table-scroll"><table class="rep-table"><thead><tr><th>Learning area</th><th class="n">Entries</th><th class="n">Time</th><th>Most recent</th></tr></thead><tbody>'+
-      rows.map(function(x){ return '<tr class="'+(x.es.length?'':'zero')+'"><td><span class="who"><i class="dot" style="--a:'+x.a.color+'"></i>'+esc(x.a.full)+'</span></td><td class="n">'+x.es.length+'</td><td class="n">'+(x.min?hours(x.min):'–')+'</td><td>'+(x.es.length?fmtShort(x.es[x.es.length-1].date):'–')+'</td></tr>'; }).join('')+
-    '</tbody><tfoot><tr><td>All learning</td><td class="n">'+list.length+'</td><td class="n">'+hours(totalMin)+'</td><td></td></tr></tfoot></table></div>'+
+    '<dl><dt>Curriculum</dt><dd>'+esc(CURRICULA[CUR].name)+'</dd><dt>Year level</dt><dd>'+esc(c.yearLevel||'Not set')+'</dd><dt>Period</dt><dd>'+fmtShort(from)+' – '+fmtLong(to)+'</dd><dt>Entries</dt><dd>'+list.length+' · '+hours(totalMin)+'</dd></dl></header>'+
+    '<div class="table-scroll"><table class="rep-table"><thead><tr><th>Learning area</th><th class="n">Entries</th><th class="n">Time</th><th>Parts covered</th><th>Most recent</th></tr></thead><tbody>'+
+      rows.map(function(x){ return '<tr class="'+(x.es.length?'':'zero')+'"><td><span class="who"><i class="dot" style="--a:'+x.a.color+'"></i>'+esc(x.a.full)+'</span></td><td class="n">'+x.es.length+'</td><td class="n">'+(x.min?hours(x.min):'–')+'</td><td class="parts">'+esc(coveredParts(x))+'</td><td>'+(x.es.length?fmtShort(x.es[x.es.length-1].date):'–')+'</td></tr>'; }).join('')+
+    '</tbody><tfoot><tr><td>All learning</td><td class="n">'+list.length+'</td><td class="n">'+hours(totalMin)+'</td><td></td><td></td></tr></tfoot></table></div>'+
     body +
     '<footer class="rep-foot"><span>Prepared by the family'+(family?' ('+family+')':'')+' from records kept during the period.</span><span>Generated '+fmtLong(todayISO())+'</span></footer>';
   hydrate(box);
@@ -1051,7 +1190,7 @@ function buildBackup(){
       return {id:p.id, w:p.w, h:p.h, name:p.name, type:p.type, size:p.size, kind:p.kind, data:data};
     }); }));
   }).then(function(photos){
-    var data = {app:APP_ID, version:1, exportedAt:new Date().toISOString(), familyName:S.meta.familyName||'', children:S.children, entries:S.entries, photos:photos};
+    var data = {app:APP_ID, version:1, exportedAt:new Date().toISOString(), familyName:S.meta.familyName||'', state:CUR, children:S.children, entries:S.entries, photos:photos};
     return new Blob([JSON.stringify(data)],{type:'application/json'});
   });
 }
@@ -1077,6 +1216,10 @@ function renderSettings(el){
       '<section class="panel"><h3>Restore from a backup</h3>'+
         '<p>Use this on a new device or after clearing your browser. Restoring replaces everything currently on this device with the backup’s contents.</p>'+
         '<div class="btns"><label class="btn ghost file-btn">Choose backup file<input type="file" id="s-import" accept=".json,application/json"></label></div>'+
+      '</section>'+
+      '<section class="panel"><h3>Your state or territory</h3>'+
+        '<p>Sets the curriculum, learning areas and strands used for new entries, coverage and reports.</p>'+
+        '<label class="field"><span class="sr">State or territory</span><select id="s-state">'+stateOptions(CUR)+'</select></label>'+
       '</section>'+
       '<section class="panel"><h3>Report details</h3>'+
         '<label class="field"><span>Family surname (shown on reports)</span><input type="text" id="s-family" maxlength="40" value="'+esc(S.meta.familyName||'')+'" placeholder="e.g. Nguyen"></label>'+
@@ -1109,6 +1252,7 @@ function renderSettings(el){
   var ex = $('#s-export'); if(ex) ex.onclick = function(){ doExport(false); };
   var sh = $('#s-share'); if(sh) sh.onclick = function(){ doExport(true); };
   var ins = $('#s-install'); if(ins) ins.onclick = function(){ installPrompt.prompt(); installPrompt.userChoice.then(function(){ installPrompt = null; rerender(); }); };
+  $('#s-state').onchange = function(e){ setCurriculum(e.target.value); setMeta('state', CUR).then(function(){ toast('Curriculum set to '+CURRICULA[CUR].state); }); };
   $('#s-family').onchange = function(e){ setMeta('familyName', e.target.value.trim()).then(function(){ toast('Saved'); }); };
   $('#s-import').onchange = function(ev){
     var file = ev.target.files && ev.target.files[0]; ev.target.value = '';
@@ -1129,6 +1273,7 @@ function renderSettings(el){
             jobs.push(db.put('photos',rec));
           });
           jobs.push(db.put('meta',{key:'familyName', value:data.familyName||''}));
+          if(data.state) jobs.push(db.put('meta',{key:'state', value:data.state}));
           jobs.push(db.put('meta',{key:'lastBackup', value:data.exportedAt}));
           return Promise.all(jobs);
         }).then(load).then(function(){ toast('Records restored'); location.hash = 'entries'; go('entries'); });
@@ -1207,6 +1352,23 @@ function examplePhoto(kind, color, label){
   return new Promise(function(r){ c.toBlob(r,'image/jpeg',0.82); });
 }
 function seedExamples(){
+  setCurriculum('WA');
+  var STR = {
+    'Rock pool survey at the reef':['sci::Biological sciences','sci::Science inquiry','mat::Probability and statistics'],
+    'Equivalent fractions with paper strips':['mat::Number and algebra'],
+    'Persuasive letter to the shire about bike paths':['eng::Literacy','eng::Language','hass::Civics and citizenship'],
+    'Python turtle: drawing spirals with loops':['tech::Digital technologies','mat::Measurement and geometry'],
+    'Swimming lessons: stroke correction':['hpe::Movement and physical activity'],
+    'Reading log: Charlotte\u2019s Web, chapters 1\u20138':['eng::Literature'],
+    'WA Museum visit: the six Noongar seasons':['hass::History','hass::Geography','sci::Earth and space sciences'],
+    'Watercolour wash landscapes':['art::Visual arts'],
+    'Rain gauge readings for the month':['sci::Earth and space sciences','mat::Probability and statistics'],
+    'Timeline of Australian Federation':['hass::History'],
+    'Times tables speed practice':['mat::Number and algebra'],
+    'Kitchen chemistry: red cabbage pH indicator':['sci::Chemical sciences','sci::Science inquiry'],
+    'Short story draft: The Lighthouse Keeper':['eng::Literacy','eng::Literature'],
+    'Cycling skills and road safety':['hpe::Personal, social and community health','hpe::Movement and physical activity']
+  };
   return wipe().then(function(){
     var now = Date.now();
     var mia = {id:uid(), name:'Mia', yearLevel:'Year 4', color:CHILD_COLORS[0], createdAt:now};
@@ -1236,13 +1398,13 @@ function seedExamples(){
           return ph.then(function(ids){
             return Promise.all(files.map(function(f){ return db.put('photos',{id:f.id, blob:f.blob, name:f.name, type:f.type, size:f.size, kind:'file'}); })).then(function(){ return ids; });
           }).then(function(ids){
-            return db.put('entries',{id:uid(), date:daysAgo(r[0]), title:r[1], areas:r[2], type:r[3], minutes:r[4], childIds:r[5], notes:r[6], photoIds:ids,
+            return db.put('entries',{id:uid(), date:daysAgo(r[0]), title:r[1], areas:r[2], type:r[3], minutes:r[4], childIds:r[5], notes:r[6], photoIds:ids, curriculum:'WA', strands:STR[r[1]]||[], codes:'',
               files:files.map(function(f){ return {id:f.id, name:f.name, type:f.type, size:f.size}; }), links:extra.links||[], createdAt:now-r[0]*864e5+j, updatedAt:now});
           });
         });
       }, Promise.resolve());
     }).then(function(){
-      return Promise.all([db.put('meta',{key:'familyName', value:'Example'}), db.put('meta',{key:'lastBackup', value:new Date().toISOString()})]);
+      return Promise.all([db.put('meta',{key:'state', value:'WA'}), db.put('meta',{key:'familyName', value:'Example'}), db.put('meta',{key:'lastBackup', value:new Date().toISOString()})]);
     });
   }).then(load);
 }

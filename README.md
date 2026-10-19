@@ -49,6 +49,8 @@ Families receive the update the next time they open the app while online. Their 
 
 ## Things to tell families
 
+- **Choose your state.** The welcome screen and *Backup → Your state or territory* set the curriculum. WA uses the Western Australian Curriculum (revised 2026 strands for Mathematics, Science and HASS); NSW uses NESA key learning areas; Victoria uses Victorian Curriculum 2.0; Queensland, SA, Tasmania, the ACT and the NT use Australian Curriculum v9. Each entry records its learning areas, the strands it covers and optional curriculum codes.
+
 - **Photos, files and links.** Each entry can hold photos, attached files (PDF, Word, Excel, PowerPoint, audio, video, Scratch or Python projects, up to 50 MB each) and web links. For long videos, a link to YouTube, Google Drive or OneDrive keeps the app and its backups small.
 
 - **Back up regularly.** Records live in the browser on one device. *Backup → Download backup* saves a single file with every entry and photo. Keep it in OneDrive, Google Drive or on a USB stick. The app reminds them if a backup is overdue.
@@ -59,7 +61,7 @@ Families receive the update the next time they open the app while online. Their 
 
 ## Customising
 
-- **Learning areas** are the eight WA Curriculum learning areas. To change them, edit the `AREAS` list near the top of the script in `index.html`.
+- **Learning areas and strands** for each state are in the `CURRICULA` list near the top of the script in `index.html`. Edit a state's `strands` lists to add or rename parts of the curriculum.
 - **Evidence types** are in the `TYPES` list just below it.
 - **Colours and fonts** are set as variables at the top of the `<style>` block.
 
